@@ -25,16 +25,21 @@ public class Sender extends JFrame implements ActionListener{
     private InetAddress ip;
     private int port = 8080;
 
+    private JLabel label;
+
     public Sender(){
 
-        super("File Transfer");
-        setSize(new Dimension(500,100));
+        super("Sender");
+        setSize(new Dimension(500,150));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         JPanel jp = new JPanel(new FlowLayout());
 
         path = new JTextField(30);
         attach = new JButton("Attach");
+
+        label = new JLabel("Choose file for sending", SwingConstants.CENTER);
+        label.setFont(new Font("Arial", Font.PLAIN, 16));
 
         attach.addActionListener(this);
 
@@ -44,7 +49,8 @@ public class Sender extends JFrame implements ActionListener{
         send = new JButton("Send");
         send.addActionListener(this);
 
-        add(jp, BorderLayout.CENTER);
+        add(jp, BorderLayout.NORTH);
+        add(label, BorderLayout.CENTER);
         add(send, BorderLayout.SOUTH);
 
         try {
@@ -60,7 +66,7 @@ public class Sender extends JFrame implements ActionListener{
         if(e.getActionCommand().equals("Attach")) {
 
             chooser = new JFileChooser();
-            chooser.showOpenDialog(null);
+            chooser.showOpenDialog(this);
             file = chooser.getSelectedFile();
             path.setText(file.getAbsolutePath());
 
@@ -77,7 +83,7 @@ public class Sender extends JFrame implements ActionListener{
 
     private void sendPackets(byte[] bytes, int i){
 
-        if(bytes.length - i * 1000 > 1000) {
+        if(bytes.length - ( i  * 1000 ) > 1000) {
             byte[] arr = Arrays.copyOfRange(bytes, i * 1000, (i + 1) * 1000);
             packet = new DatagramPacket(arr, 1000, ip, port);
             try {
@@ -96,24 +102,35 @@ public class Sender extends JFrame implements ActionListener{
                 }
             };
             pt.startListening();
-        }else {
+        } else {
 
             byte[] arr = Arrays.copyOfRange(bytes, bytes.length - ( bytes.length % 1000), bytes.length);
-            packet = new DatagramPacket(arr, 1000, ip, port);
+            packet = new DatagramPacket(arr, bytes.length % 1000, ip, port);
             try {
                 socket.send(packet);
             } catch (Exception e) {
                 System.out.println("Something went wrong");
             }
+            PackageThread pt = new PackageThread(socket, this) {
+                @Override
+                public void doWork() throws Exception {
+                    if (new String(receivedBuffer).trim().equals("I received")) {
+                        label.setText("File has been sent successfully");
+                    }else{
+                        System.out.println("error occurred");
+                    }
+                }
+            };
+            pt.startListening();
         }
     }
 
 
     private void chooseReceiver(byte[] bytes){
 
+        String msg = file.getName() + "." + bytes.length;
         try {
-            packet = new DatagramPacket((file.getName() + "." + bytes.length).getBytes(), file.getName().length(),
-                            InetAddress.getByName("255.255.255.255"), port);
+            packet = new DatagramPacket(msg.getBytes(), msg.length(), InetAddress.getByName("255.255.255.255"), port);
             socket.send(packet);
         }catch (Exception e){
             System.out.println("Something went wrong!");

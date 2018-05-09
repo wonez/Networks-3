@@ -26,7 +26,7 @@ abstract public class PackageThread {
                 socket.receive(packet);
                 doWork();
             } catch (Exception e) {
-                System.out.println("Already listening on this socket, this happens if game is run on the same pc");
+                e.printStackTrace();
             }
         });
         listen.start();
